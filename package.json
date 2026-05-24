@@ -1,0 +1,12 @@
+{
+  "name": "spanish-audio-scraper",
+  "version": "1.0.0",
+  "description": "Stremio server-side scraper",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "stremio-addon-sdk": "^1.6.10"
+  }
+}
