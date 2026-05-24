@@ -1,12 +1,16 @@
 {
-  "name": "spanish-audio-scraper",
-  "version": "1.0.0",
-  "description": "Stremio server-side scraper",
-  "main": "server.js",
+  "name": "nuvio-stremio-scraper",
+  "version": "1.7.0",
+  "description": "Scraper en español para Nuvio y WuPlay usando Jackett",
+  "main": "scraper.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node scraper.js"
   },
   "dependencies": {
-    "stremio-addon-sdk": "^1.6.10"
+    "stremio-addon-sdk": "^1.2.0",
+    "needle": "^3.3.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }
