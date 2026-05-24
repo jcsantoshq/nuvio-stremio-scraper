@@ -1,0 +1,10 @@
+{
+  "id": "com.misniper.espanol.addon",
+  "version": "1.0.0",
+  "name": "Catálogo de Audio Español",
+  "description": "Servidor scraper para buscar pistas de audio y video en Español (Latino/Castellano).",
+  "resources": ["stream"],
+  "types": ["movie", "series"],
+  "idPrefixes": ["tt"],
+  "catalogs": []
+}
