@@ -1,20 +1,19 @@
 /**
  * Servidor Add-on de Stremio / Nuvio / WuPlay
- * Proveedor Real: Conexión con Jackett Local (DonTorrent, EliteTorrent, 1337x)
- * URL del Túnel: https://proud-humans-nail.loca.lt
+ * Versión Corregida para Activación en Pantalla de Reproducción
  */
 
 const { addonBuilder, serveHTTP } = require('stremio-addon-sdk');
 
 const manifest = {
     id: "com.misniper.espanol.addon",
-    version: "1.4.0",
+    version: "1.5.0", // Subimos versión para forzar actualización
     name: "Catálogo Torrent Español",
-    description: "Servidor que jala enlaces en español (Latino/Castellano) usando tu Jackett local y FlareSolverr.",
+    description: "Busca enlaces en español (Latino/Castellano) usando Jackett local.",
     resources: ["stream"],
-    types: ["movie", "series"],
-    idPrefixes: ["tt"], 
-    catalogs: []
+    types: ["movie", "series"], // Le avisa a la app que busque tanto en películas como en series
+    idPrefixes: ["tt"],        // CRÍTICO: Le dice a Stremio que despierte con cualquier ID de IMDb
+    catalogs: []               // Vacío porque no creamos canales, solo inyectamos enlaces dentro de los videos
 };
 
 const builder = new addonBuilder(manifest);
@@ -29,7 +28,7 @@ builder.defineStreamHandler((args) => {
         // Tu URL real de localtunnel activa en tu CMD
         const tuUrlDeTunnel = 'https://proud-humans-nail.loca.lt';
         
-        // Tu API Key real de Jackett vinculada de forma segura
+        // Tu API Key de Jackett
         const apiKeyJackett = 'l8lph3swn1dy6oakjafitgxtiunr1cix'; 
 
         // Ruta de consulta para que Jackett busque en todos tus indexadores configurados
@@ -38,11 +37,11 @@ builder.defineStreamHandler((args) => {
         fetch(jackettSearchUrl, {
             method: 'GET',
             headers: { 
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' 
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' 
             }
         })
         .then(response => {
-            if (!response.ok) throw new Error('Error de conexión con Jackett a través del túnel');
+            if (!response.ok) throw new Error('Error de conexión con Jackett');
             return response.json();
         })
         .then(data => {
@@ -50,13 +49,12 @@ builder.defineStreamHandler((args) => {
 
             if (data && data.Results) {
                 data.Results.forEach(torrent => {
-                    // Validamos que el torrent tenga un título válido
                     if (!torrent.Title) return;
 
                     const nombreFichero = torrent.Title.toLowerCase();
                     let idiomaDetectado = "";
 
-                    // Filtros avanzados para detectar audios en español (Latino, Castellano o Dual)
+                    // Filtros avanzados para detectar audios en español
                     if (nombreFichero.includes("latino") || nombreFichero.includes("spa lat") || nombreFichero.includes("audio latino") || nombreFichero.includes("lat")) {
                         idiomaDetectado = "Español Latino 🇲🇽";
                     } else if (nombreFichero.includes("castellano") || nombreFichero.includes("cast") || nombreFichero.includes("español") || nombreFichero.includes("esp")) {
@@ -65,14 +63,14 @@ builder.defineStreamHandler((args) => {
                         idiomaDetectado = "Audio Dual (Español Incluido) 🔄";
                     }
 
-                    // Si se confirma que viene en español, lo estructuramos para la App
+                    // Si se confirma el idioma, se añade a la lista de reproducción
                     if (idiomaDetectado !== "") {
                         let fuente = torrent.Tracker || "Jackett Source";
                         
                         streamsList.push({
                             name: `[${fuente}]`,
                             title: `${torrent.Title}\n🗣️ Audio: ${idiomaDetectado}\n👥 Seeders: ${torrent.Seeders || 0}`,
-                            url: torrent.MagnetUri || torrent.Link, // Pasa el imán o enlace de reproducción directa
+                            url: torrent.MagnetUri || torrent.Link,
                             behaviorHints: { 
                                 notSupported: false 
                             }
@@ -81,25 +79,17 @@ builder.defineStreamHandler((args) => {
                 });
             }
 
-            // Ordenar por velocidad: los torrents con más fuentes/semillas salen arriba
+            // Ordenar de mayor a menor velocidad por cantidad de semillas
             streamsList.sort((a, b) => (b.seeders || 0) - (a.seeders || 0));
             
-            console.log(`[Jackett Scraper] Se encontraron ${streamsList.length} opciones válidas en español.`);
             resolve({ streams: streamsList });
         })
         .catch(error => {
             console.error(`[Error de Rastreo]:`, error.message);
-            // Devolvemos lista vacía para que Stremio no se quede colgado cargando infinitamente
             resolve({ streams: [] });
         });
     });
 });
 
 const port = process.env.PORT || 7000;
-
-serveHTTP(builder.getInterface(), { port: port }).then(() => {
-    console.log(`\n==================================================`);
-    console.log(`🚀 ¡Servidor en Render conectado con tu Jackett local!`);
-    console.log(`🔗 Usando el túnel: https://proud-humans-nail.loca.lt`);
-    console.log(`==================================================\n`);
-});
+serveHTTP(builder.getInterface(), { port: port });
