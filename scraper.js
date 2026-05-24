@@ -1,13 +1,14 @@
 /**
  * Servidor Add-on de Stremio / Nuvio / WuPlay
- * Versión 1.6.0 - Corrección Absoluta de Variables e Interfaz
+ * Versión 1.7.0 - Corrección Definitiva con Needle para Render
  */
 
 const { addonBuilder, serveHTTP } = require('stremio-addon-sdk');
+const needle = require('needle'); // Usamos la librería nativa de Stremio para evitar errores de fetch
 
 const manifest = {
     id: "com.misniper.espanol.addon",
-    version: "1.6.0", 
+    version: "1.7.0", 
     name: "Catálogo Torrent Español",
     description: "Busca enlaces en español (Latino/Castellano) usando Jackett local.",
     resources: ["stream"],
@@ -24,7 +25,7 @@ const manifest = {
 
 const builder = new addonBuilder(manifest);
 
-// Manejador del catálogo para que aparezca obligatoriamente en la interfaz de la app
+// Manejador del catálogo obligatorio para la interfaz
 builder.defineCatalogHandler((args) => {
     return Promise.resolve({ catalogs: [] });
 });
@@ -39,15 +40,14 @@ builder.defineStreamHandler((args) => {
 
         const jackettSearchUrl = `${tuUrlDeTunnel}/api/v2.0/indexers/all/results?apikey=${apiKeyJackett}&Query=${mediaId}`;
 
-        fetch(jackettSearchUrl, {
-            method: 'GET',
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-        })
+        const options = {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+            open_timeout: 8000 // Evita que se quede colgado si el túnel tarda
+        };
+
+        needle('get', jackettSearchUrl, options)
         .then(response => {
-            if (!response.ok) throw new Error('Error de comunicación con Jackett');
-            return response.json();
-        })
-        .then(data => {
+            const data = response.body;
             const streamsList = [];
 
             if (data && data.Results) {
@@ -79,14 +79,14 @@ builder.defineStreamHandler((args) => {
                 });
             }
 
-            // CORRECCIÓN CRÍTICA: Corregido 'Seeders' con mayúscula nativa para evitar que el script falle
+            // Ordenar los resultados por cantidad de semillas (De mayor a menor velocidad)
             streamsList.sort((a, b) => {
                 const seedsA = parseInt(a.title.split("Seeders: ")[1]) || 0;
                 const seedsB = parseInt(b.title.split("Seeders: ")[1]) || 0;
                 return seedsB - seedsA;
             });
             
-            console.log(`[Jackett] Mapeados ${streamsList.length} enlaces válidos.`);
+            console.log(`[Jackett] Envío exitoso de ${streamsList.length} enlaces.`);
             resolve({ streams: streamsList });
         })
         .catch(error => {
@@ -97,5 +97,5 @@ builder.defineStreamHandler((args) => {
 });
 
 const port = process.env.PORT || 7000;
-serveHTTP(builder.getInterface(), { 
+serveHTTP(builder.getInterface(), {
     port: port });
